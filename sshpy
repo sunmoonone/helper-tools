@@ -112,12 +112,6 @@ def main(argv=None): # IGNORE:C0111
   Created by sunmoonone on %s.
   Copyright 2016 sunmoonone. All rights reserved.
 
-  Licensed under the Apache License 2.0
-  http://www.apache.org/licenses/LICENSE-2.0
-
-  Distributed on an "AS IS" basis without warranties
-  or conditions of any kind, either express or implied.
-
 USAGE
 ''' % (program_shortdesc, str(__date__))
 
@@ -129,12 +123,8 @@ USAGE
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         sub_parsers={}
 
-        parser.add_argument("-r", "--recursive", dest="recurse", action="store_true", help="recurse into subfolders [default: %(default)s]")
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
-        parser.add_argument('-V', '--version', action='version', version=program_version_message)
-#         parser.add_argument(dest="paths", help="paths to folder(s) with source file(s) [default: %(default)s]", metavar="path", nargs='+')
+        parser.add_argument('-v', '--version', action='version', version=program_version_message)
         parser.add_argument('-f', '--file', dest="conf", metavar='FILE',default="%s/sshpy-servers.json" % __cwd__, help='path to configuration file in json. Default: {CWD}/sshpy-servers.json')
-        parser.add_argument('-s', '--server', dest="server", metavar='SERVER', help='server name')
 
         subs = parser.add_subparsers(dest='subcommand',title='Available subcommands')
 
@@ -169,18 +159,6 @@ USAGE
             else:
                 parser.exit(1, 'subcommand: %s is not supported\n' % args.cmd)
             return 0
-
-
-        verbose = args.verbose
-        recurse = args.recurse
-
-        if verbose > 0:
-            print("Verbose mode on")
-            if recurse:
-                print("Recursive mode on")
-            else:
-                print("Recursive mode off")
-        
 
 #         print "using config file: %s" % args.conf
         with open(args.conf,'r') as fp:
@@ -229,7 +207,6 @@ if __name__ == "__main__":
     if DEBUG:
         sys.argv.append("-h")
         sys.argv.append("-v")
-        sys.argv.append("-r")
     if TESTRUN:
         import doctest
         doctest.testmod()

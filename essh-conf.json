@@ -3,5 +3,6 @@
 	           {"name":"server1", "host":"172.16.0.2", "port":22, "user":"root", "key_file":"~/Documents/important/kp-av1prnfg"},
 	           {"name":"server2", "host":"172.16.0.3", "port":2222, "user":"root", "key_file":"~/Documents/important/kp-do50v1hz"},
 	           {"name":"server3", "host":"172.16.0.4", "port":2222, "user":"root", "key_file":""}
-	           ]
+	           ],
+	"tmp_dir":"/tmp"
 }

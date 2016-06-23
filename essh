@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # encoding: utf-8
 '''
-sshpy -- simple ssh helper tool
+essh -- simple ssh helper tool
 
-sshpy is a simple tool providing download and upload features through scp
+essh is a simple tool providing download and upload features through scp
 
 
 @author:     sunmoonone
@@ -95,6 +95,45 @@ def upload(local_file, remote_dir):
     else:
         os.system("scp -i %s -P %s %s %s@%s:/root" % (server.key_file, server.port, local_file, server.user, server.host))
 
+def copy(src_file, dest_dir):
+    '''copy file between hosts
+    '''
+    if not src_file or not dest_dir:
+        raise CLIError('invalid arguments')
+
+    if ':' not in src_file and ':' in dest_dir:
+        return upload(src_file, dest_dir)
+
+    elif ':' not in dest_dir and ':' in src_file:
+        return download(src_file, dest_dir)
+
+    elif ':' not in src_file or ':' not in dest_dir:
+        raise CLIError('invalid arguments')
+
+    tmp_dir = CONF['tmp_dir']
+
+
+    src_server, src_file = src_file.split(':')
+    src_server = get_server(src_server)
+
+    #download file to tmp
+    print "downloading file to tmp dir %s" % tmp_dir
+    os.system("scp -i %s -P %s %s@%s:%s %s" % (src_server.key_file, src_server.port, src_server.user, src_server.host, src_file, tmp_dir))
+
+    #upload file
+    filename = os.path.basename(src_file)
+    local_file = os.path.join(tmp_dir, filename)
+
+    dest_server, dest_dir = dest_dir.split(':')
+    dest_server = get_server(dest_server)
+
+    print "uploading file to %s" % dest_server.name
+    os.system("scp -i %s -P %s %s %s@%s:%s" % (dest_server.key_file, dest_server.port, local_file, dest_server.user, dest_server.host, dest_dir))
+    
+    #delete tmp file
+    os.unlink(local_file)
+
+
 def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
 
@@ -118,15 +157,20 @@ USAGE
 ''' % (program_shortdesc, str(__date__))
 
     try:
-        __cwd__= os.path.abspath(os.path.dirname(__file__))
-        os.chdir(__cwd__)
+        __cwd__ = os.curdir
+
+        _exe_dir_= os.path.abspath(os.path.dirname(__file__))
 
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         sub_parsers={}
 
         parser.add_argument('-v', '--version', action='version', version=program_version_message)
-        parser.add_argument('-f', '--file', dest="conf", metavar='FILE',default="%s/sshpy-servers.json" % __cwd__, help='path to configuration file in json. Default: {CWD}/sshpy-servers.json')
+        
+        _conf_file = "%s/essh-conf.json" % _exe_dir_
+
+        parser.add_argument('-f', '--file', dest="conf", metavar='FILE',default=_conf_file, 
+                            help='path to configuration file in json. Default: %s' % _conf_file)
 
         subs = parser.add_subparsers(dest='subcommand',title='Available subcommands')
 
@@ -137,16 +181,12 @@ USAGE
                                                              add_help=False)
         sub_to.add_argument('server',help='server name')
 
-        sub_parsers['download']=sub_download=subs.add_parser('download',description='download file from remote server', help='download file from remote server',
-                                                             add_help=False)
-        sub_download.add_argument('remote_file',help='remote file to download, fromat: server:path')
-        sub_download.add_argument('local_dir', default="./", help="local directory to save file")
-
-        sub_parsers['upload']=sub_upload=subs.add_parser('upload',description='upload file to remote server',help='upload file to remote server',add_help=False)
-        sub_upload.add_argument('local_file',help='local file to upload')
-        sub_upload.add_argument('remote_dir',help="remote directory to save file, format: server:path")
-
         sub_parsers['list']=subs.add_parser('list',description='list available servers',help='list available servers',add_help=False)
+
+        sub_parsers['copy']=sub_copy=subs.add_parser('copy',description='download file from one server and then upload it to another server',
+                                                     help='download file from one server and then upload it to another server',add_help=False)
+        sub_copy.add_argument('src_file',help='source file on server or local, if on server the format is: server:path')
+        sub_copy.add_argument('dest_dir',help="destination directory on another server or local, if on server the format is: server:path")
 
 
         # Process arguments
@@ -182,12 +222,8 @@ USAGE
             ssh_to(args.server)
             return 0
 
-        elif cmd == 'download':
-            download(args.remote_file, args.local_dir)
-            return 0
-
-        elif cmd == 'upload':
-            upload(args.local_file, args.remote_dir)
+        elif cmd =='copy':
+            copy(args.src_file, args.dest_dir)
             return 0
 
         else:

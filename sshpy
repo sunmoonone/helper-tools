@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 '''
-sshpy -- simple ssh helper
+sshpy -- simple ssh helper tool
 
 sshpy is a simple tool providing download and upload features through scp
 

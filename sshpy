@@ -1,0 +1,247 @@
+#!/usr/bin/env python
+# encoding: utf-8
+'''
+sshpy -- simple ssh helper
+
+sshpy is a simple tool providing download and upload features through scp
+
+
+@author:     sunmoonone
+
+@copyright:  2016 . All rights reserved.
+
+@license:    license
+
+@contact:    zhangdan@huanqiu.com
+@deffield    updated: 2016-06-23
+'''
+
+import sys
+import os
+
+from argparse import ArgumentParser
+from argparse import RawDescriptionHelpFormatter
+import json
+
+__all__ = []
+__version__ = 0.1
+__date__ = '2016-06-22'
+__updated__ = '2016-06-23'
+
+DEBUG = 0
+TESTRUN = 0
+PROFILE = 0
+
+CONF ={}
+
+class CLIError(Exception):
+    '''Generic exception to raise and log different fatal errors.'''
+    def __init__(self, msg):
+        super(CLIError).__init__(type(self))
+        self.msg = "E: %s" % msg
+    def __str__(self):
+        return self.msg
+    def __unicode__(self):
+        return self.msg
+
+class ServerInfo(object):
+    def __init__(self,**kw):
+        for k,v in kw.items():
+            setattr(self, k, v)
+
+def get_server(server_name):
+    for d in CONF["servers"]:
+        if d['name'] == server_name:
+            return ServerInfo(**d)
+    raise CLIError("server info not found in servers.json")
+
+def list_servers():
+    for d in CONF["servers"]:
+        print '%s\t%s@%s' % (d['name'], d['user'], d['host'])
+
+
+def ssh_to(server_name):
+    server = get_server(server_name)
+    os.system("ssh -i %s -p %s %s@%s" % (server.key_file, server.port, server.user, server.host))
+
+def download(remote_file, local_dir):
+    if not remote_file or ':' not in remote_file:
+        raise CLIError('invalid path of remote file')
+        
+    server, remote_file = remote_file.split(':')
+    server = get_server(server)
+
+    if not local_dir:
+        os.system("scp -i %s -P %s %s@%s:%s" % (server.key_file, server.port, server.user, server.host, remote_file))
+    else:
+        os.system("scp -i %s -P %s %s@%s:%s %s" % (server.key_file, server.port, server.user, server.host, remote_file, local_dir))
+
+def upload(local_file, remote_dir):
+    if not remote_dir:
+        raise CLIError('invalid path of remote directory')
+
+    if ':' in remote_dir:
+        server, remote_dir = remote_dir.split(':')
+    else:
+        server=remote_dir
+        remote_dir=''
+
+    server = get_server(server)
+
+    if remote_dir:
+        os.system("scp -i %s -P %s %s %s@%s:%s" % (server.key_file, server.port, local_file, server.user, server.host, remote_dir))
+    else:
+        os.system("scp -i %s -P %s %s %s@%s:/root" % (server.key_file, server.port, local_file, server.user, server.host))
+
+def main(argv=None): # IGNORE:C0111
+    '''Command line options.'''
+
+    global CONF
+    if argv is None:
+        argv = sys.argv
+    else:
+        sys.argv.extend(argv)
+
+    program_name = os.path.basename(sys.argv[0])
+    program_version = "v%s" % __version__
+    program_build_date = str(__updated__)
+    program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
+    program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+    program_license = '''%s
+
+  Created by sunmoonone on %s.
+  Copyright 2016 sunmoonone. All rights reserved.
+
+  Licensed under the Apache License 2.0
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Distributed on an "AS IS" basis without warranties
+  or conditions of any kind, either express or implied.
+
+USAGE
+''' % (program_shortdesc, str(__date__))
+
+    try:
+        __cwd__= os.path.abspath(os.path.dirname(__file__))
+        os.chdir(__cwd__)
+
+        # Setup argument parser
+        parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
+        sub_parsers={}
+
+        parser.add_argument("-r", "--recursive", dest="recurse", action="store_true", help="recurse into subfolders [default: %(default)s]")
+        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
+        parser.add_argument('-V', '--version', action='version', version=program_version_message)
+#         parser.add_argument(dest="paths", help="paths to folder(s) with source file(s) [default: %(default)s]", metavar="path", nargs='+')
+        parser.add_argument('-f', '--file', dest="conf", metavar='FILE',default="%s/sshpy-servers.json" % __cwd__, help='path to configuration file in json. Default: {CWD}/sshpy-servers.json')
+        parser.add_argument('-s', '--server', dest="server", metavar='SERVER', help='server name')
+
+        subs = parser.add_subparsers(dest='subcommand',title='Available subcommands')
+
+        sub_help = subs.add_parser('help',description='display help for a subcommand',help='display help for a subcommand',add_help=False)
+        sub_help.add_argument(dest='cmd',nargs='?')
+
+        sub_parsers['to']=sub_to=subs.add_parser('to',description='ssh to remote server', help='ssh to remote server',
+                                                             add_help=False)
+        sub_to.add_argument('server',help='server name')
+
+        sub_parsers['download']=sub_download=subs.add_parser('download',description='download file from remote server', help='download file from remote server',
+                                                             add_help=False)
+        sub_download.add_argument('remote_file',help='remote file to download, fromat: server:path')
+        sub_download.add_argument('local_dir', default="./", help="local directory to save file")
+
+        sub_parsers['upload']=sub_upload=subs.add_parser('upload',description='upload file to remote server',help='upload file to remote server',add_help=False)
+        sub_upload.add_argument('local_file',help='local file to upload')
+        sub_upload.add_argument('remote_dir',help="remote directory to save file, format: server:path")
+
+        sub_parsers['list']=subs.add_parser('list',description='list available servers',help='list available servers',add_help=False)
+
+
+        # Process arguments
+        args = parser.parse_args()
+        cmd = args.subcommand
+        
+        if cmd=='help':
+            if not args.cmd:
+                sub_help.print_help()
+            elif args.cmd in sub_parsers:
+                sub_parsers[args.cmd].print_help()
+            else:
+                parser.exit(1, 'subcommand: %s is not supported\n' % args.cmd)
+            return 0
+
+
+        verbose = args.verbose
+        recurse = args.recurse
+
+        if verbose > 0:
+            print("Verbose mode on")
+            if recurse:
+                print("Recursive mode on")
+            else:
+                print("Recursive mode off")
+        
+
+#         print "using config file: %s" % args.conf
+        with open(args.conf,'r') as fp:
+            try:
+                CONF = json.load(fp)
+            except:
+                print "invalid conf"
+                return 1
+        
+        if cmd == 'list':
+            list_servers()
+            return 0
+
+
+        if cmd =="to":
+            if not args.server:
+                print ("server name required")
+                return 1
+            ssh_to(args.server)
+            return 0
+
+        elif cmd == 'download':
+            download(args.remote_file, args.local_dir)
+            return 0
+
+        elif cmd == 'upload':
+            upload(args.local_file, args.remote_dir)
+            return 0
+
+        else:
+            print "command not supported"
+            return 1
+        
+    except KeyboardInterrupt:
+        ### handle keyboard interrupt ###
+        return 0
+#     except Exception, e:
+#         if DEBUG or TESTRUN:
+#             raise(e)
+#         indent = len(program_name) * " "
+#         sys.stderr.write(program_name + ": " + repr(e) + "\n")
+#         sys.stderr.write(indent + "  for help use --help\n")
+#         return 2
+
+if __name__ == "__main__":
+    if DEBUG:
+        sys.argv.append("-h")
+        sys.argv.append("-v")
+        sys.argv.append("-r")
+    if TESTRUN:
+        import doctest
+        doctest.testmod()
+    if PROFILE:
+        import cProfile
+        import pstats
+        profile_filename = 'sshto_profile.txt'
+        cProfile.run('main()', profile_filename)
+        statsfile = open("profile_stats.txt", "wb")
+        p = pstats.Stats(profile_filename, stream=statsfile)
+        stats = p.strip_dirs().sort_stats('cumulative')
+        stats.print_stats()
+        statsfile.close()
+        sys.exit(0)
+    sys.exit(main())

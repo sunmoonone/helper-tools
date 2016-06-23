@@ -1,0 +1,5 @@
+
+bin-file: /opt/consul/consul
+config-file: /opt/consul/conf.json
+servers: []
+clients: []

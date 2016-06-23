@@ -1,0 +1,7 @@
+{
+	"servers":[ 
+	           {"name":"consul-devq1", "host":"58.68.250.87", "port":22, "user":"root", "key_file":"~/Documents/important/kp-av1prnfg"},
+	           {"name":"consul-devpek2", "host":"119.254.103.215", "port":2222, "user":"root", "key_file":"~/Documents/important/kp-do50v1hz"},
+	           {"name":"consul-devpek3", "host":"", "port":2222, "user":"root", "key_file":""}
+	           ]
+}

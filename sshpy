@@ -48,6 +48,8 @@ class ServerInfo(object):
     def __init__(self,**kw):
         for k,v in kw.items():
             setattr(self, k, v)
+        if not self.key_file:
+            self.key_file = "~/.ssh/id_rsa"
 
 def get_server(server_name):
     for d in CONF["servers"]:

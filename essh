@@ -58,8 +58,13 @@ def get_server(server_name):
     raise CLIError("server info not found in servers.json")
 
 def list_servers():
+    mx=0
     for d in CONF["servers"]:
-        print '%s\t%s@%s' % (d['name'], d['user'], d['host'])
+        l = len(d['name'])
+        if mx < l:
+            mx=l
+    for d in CONF["servers"]:
+        print '%s\t%s@%s' % (d['name'].ljust(mx,' '), d['user'], d['host'])
 
 
 def ssh_to(server_name):
@@ -177,16 +182,22 @@ USAGE
         sub_help = subs.add_parser('help',description='display help for a subcommand',help='display help for a subcommand',add_help=False)
         sub_help.add_argument(dest='cmd',nargs='?')
 
-        sub_parsers['to']=sub_to=subs.add_parser('to',description='ssh to remote server', help='ssh to remote server',
+        sub_parsers['to']=sub_to=subs.add_parser('to',description='login to remote server', help='login to remote server',
                                                              add_help=False)
         sub_to.add_argument('server',help='server name')
 
         sub_parsers['list']=subs.add_parser('list',description='list available servers',help='list available servers',add_help=False)
 
-        sub_parsers['copy']=sub_copy=subs.add_parser('copy',description='download file from one server and then upload it to another server',
-                                                     help='download file from one server and then upload it to another server',add_help=False)
+        sub_parsers['copy']=sub_copy=subs.add_parser('copy',description='copy file between servers',
+                                                     help='copy file between servers',add_help=False)
         sub_copy.add_argument('src_file',help='source file on server or local, if on server the format is: server:path')
         sub_copy.add_argument('dest_dir',help="destination directory on another server or local, if on server the format is: server:path")
+
+        sub_parsers['run']=sub_run=subs.add_parser('run',description='run command on server',
+                                                     help='run command on server',add_help=False)
+        sub_run.add_argument('-g','--group', dest="group", help='run command on servers of a group')
+        sub_run.add_argument('-p','--pattern', dest="pattern", help='run command on servers with name matching pattern')
+        sub_run.add_argument('command', help="command to run")
 
 
         # Process arguments
@@ -224,6 +235,10 @@ USAGE
 
         elif cmd =='copy':
             copy(args.src_file, args.dest_dir)
+            return 0
+
+        elif cmd =='run':
+            print 'not implemented'
             return 0
 
         else:
